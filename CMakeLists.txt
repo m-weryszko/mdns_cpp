@@ -4,16 +4,16 @@ project(
   VERSION 0.1.0
   LANGUAGES CXX)
 
-option(MDNS_CPP_BUILD_EXAMPLE "Build example executables" ON)
+option(MDNS_CPP_BUILD_EXAMPLE "Build example executables" OFF)
 
 # Set the output of the libraries and executables.
 set(EXECUTABLE_OUTPUT_PATH ${PROJECT_BINARY_DIR}/bin)
 set(LIBRARY_OUTPUT_PATH ${PROJECT_BINARY_DIR}/lib)
 
-if(NOT CMAKE_CXX_STANDARD)
-  set(CMAKE_CXX_STANDARD 20)
-  set(CMAKE_CXX_EXTENSIONS OFF)
-endif()
+set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
+set(CMAKE_VERBOSE_MAKEFILE ON) # verbose output of all commands
 
 # ##############################################################################
 # library
@@ -54,9 +54,9 @@ add_library(${PROJECT_NAME}::${PROJECT_NAME} ALIAS ${PROJECT_NAME})
 # example
 # ##############################################################################
 
-find_package(Threads REQUIRED)
-
 if(MDNS_CPP_BUILD_EXAMPLE)
+  find_package(Threads REQUIRED)
+
   add_executable(${PROJECT_NAME}_service_example
                  ${CMAKE_CURRENT_LIST_DIR}/example/service.cpp)
   target_link_libraries(${PROJECT_NAME}_service_example ${PROJECT_NAME}

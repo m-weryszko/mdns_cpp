@@ -17,9 +17,26 @@
 #endif
 #include <string.h>
 
+#ifdef __UCLIBC__
+// manual `to_string` due uClibc missing it
+namespace std {
+    template<typename T>
+    std::string to_string(const T &n) {
+        std::ostringstream s;
+        s << n;
+        return s.str();
+    }
+}
+
+//needed includes
+#include <errno.h>
+#include <stdio.h>
+#endif
+
 namespace mdns_cpp {
 
 static mdns_record_txt_t txtbuffer[128];
+static std::vector<ServiceDiscovery> services;
 
 int mDNS::openServiceSockets(int *sockets, int max_sockets) {
   // When receiving, each socket can receive data from all network interfaces
@@ -245,7 +262,7 @@ int mDNS::openClientSockets(int *sockets, int max_sockets, int port) {
   return num_sockets;
 }
 
-static int query_callback(int sock, const struct sockaddr *from, size_t addrlen, mdns_entry_type_t entry,
+int query_callback(int sock, const struct sockaddr *from, size_t addrlen, mdns_entry_type_t entry,
                           uint16_t query_id, uint16_t rtype, uint16_t rclass, uint32_t ttl, const void *data,
                           size_t size, size_t name_offset, size_t name_length, size_t record_offset,
                           size_t record_length, void *user_data) {
@@ -265,6 +282,7 @@ static int query_callback(int sock, const struct sockaddr *from, size_t addrlen,
 
   const int str_capacity = 1000;
   char str_buffer[str_capacity]={};
+  ServiceDiscovery service;
 
   if (rtype == MDNS_RECORDTYPE_PTR) {
     mdns_string_t namestr =
@@ -272,11 +290,13 @@ static int query_callback(int sock, const struct sockaddr *from, size_t addrlen,
 
     snprintf(str_buffer, str_capacity, "%s : %s %.*s PTR %.*s rclass 0x%x ttl %u length %d\n", fromaddrstr.data(),
              entrytype, MDNS_STRING_FORMAT(entrystr), MDNS_STRING_FORMAT(namestr), rclass, ttl, (int)record_length);
+    service.service = namestr.str;
   } else if (rtype == MDNS_RECORDTYPE_SRV) {
     mdns_record_srv_t srv =
         mdns_record_parse_srv(data, size, record_offset, record_length, namebuffer, sizeof(namebuffer));
     snprintf(str_buffer, str_capacity,"%s : %s %.*s SRV %.*s priority %d weight %d port %d\n", fromaddrstr.data(), entrytype,
            MDNS_STRING_FORMAT(entrystr), MDNS_STRING_FORMAT(srv.name), srv.priority, srv.weight, srv.port);
+    service.service = MDNS_STRING_FORMAT(srv.name);
   } else if (rtype == MDNS_RECORDTYPE_A) {
     struct sockaddr_in addr;
     mdns_record_parse_a(data, size, record_offset, record_length, &addr);
@@ -304,7 +324,14 @@ static int query_callback(int sock, const struct sockaddr *from, size_t addrlen,
            MDNS_STRING_FORMAT(entrystr), rtype, rclass, ttl, (int)record_length);
   }
   MDNS_LOG << std::string(str_buffer);
+  service.rawinfo = std::string(str_buffer);
+  std::string fromAddrStrWithoutPort = fromaddrstr.substr(0, fromaddrstr.find(":"));
 
+  service.hostname = entrystr.str;
+  service.address = fromAddrStrWithoutPort;
+  service.type = entrytype;
+
+  services.push_back(service);
   return 0;
 }
 
@@ -402,6 +429,10 @@ void mDNS::setServiceName(const std::string &name) { name_ = name; }
 
 void mDNS::setServiceTxtRecord(const std::string &txt_record) { txt_record_ = txt_record; }
 
+void mDNS::setTimeout(std::uint16_t timeout) { timeout_ = timeout; }
+
+std::vector<ServiceDiscovery> mDNS::getDiscoveredServices() { return services; }
+
 void mDNS::runMainLoop() {
   constexpr size_t number_of_sockets = 32;
   int sockets[number_of_sockets];
@@ -486,7 +517,7 @@ void mDNS::executeQuery(const std::string &service) {
   MDNS_LOG << "Reading mDNS query replies\n";
   do {
     struct timeval timeout;
-    timeout.tv_sec = 5;
+    timeout.tv_sec = timeout_;
     timeout.tv_usec = 0;
 
     int nfds = 0;
@@ -518,6 +549,7 @@ void mDNS::executeQuery(const std::string &service) {
 }
 
 void mDNS::executeDiscovery() {
+  services.clear();
   int sockets[32];
   int num_sockets = openClientSockets(sockets, sizeof(sockets) / sizeof(sockets[0]), 0);
   if (num_sockets <= 0) {
@@ -545,7 +577,7 @@ void mDNS::executeDiscovery() {
   MDNS_LOG << "Reading DNS-SD replies\n";
   do {
     struct timeval timeout;
-    timeout.tv_sec = 5;
+    timeout.tv_sec = timeout_;
     timeout.tv_usec = 0;
 
     int nfds = 0;

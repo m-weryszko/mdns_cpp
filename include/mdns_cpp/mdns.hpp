@@ -3,6 +3,7 @@
 #include <functional>
 #include <string>
 #include <thread>
+#include <vector>
 
 #include "mdns_cpp/defs.hpp"
 
@@ -22,9 +23,11 @@ class mDNS {
   void setServicePort(std::uint16_t port);
   void setServiceName(const std::string &name);
   void setServiceTxtRecord(const std::string &text_record);
+  void setTimeout(std::uint16_t timeout);
 
   void executeQuery(const std::string &service);
   void executeDiscovery();
+  std::vector<ServiceDiscovery> getDiscoveredServices();
 
  private:
   void runMainLoop();
@@ -34,6 +37,7 @@ class mDNS {
   std::string hostname_{"dummy-host"};
   std::string name_{"_http._tcp.local."};
   std::uint16_t port_{42424};
+  std::uint16_t timeout_{5};
   std::string txt_record_{};
 
   bool running_{false};
