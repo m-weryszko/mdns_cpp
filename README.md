@@ -92,8 +92,10 @@ To read discovery responses use `mdns_discovery_recv` or `getDiscoveredServices(
 
 ```c++
 #include <thread>
+#include <vector>
 #include "mdns_cpp/mdns.hpp"
 #include "mdns_cpp/defs.hpp"
+
 int main() {
   mdns_cpp::mDNS mdns;
   mdns.setTimeoutMs(4000);
