@@ -325,6 +325,7 @@ int query_callback(int sock, const struct sockaddr *from, size_t addrlen, mdns_e
   }
   MDNS_LOG << std::string(str_buffer);
   service.rawinfo = std::string(str_buffer);
+  service.rawinfo.erase(std::remove(service.rawinfo.begin(), service.rawinfo.end(), '\n'), service.rawinfo.end()); //remove new line
   std::string fromAddrStrWithoutPort = fromaddrstr.substr(0, fromaddrstr.find(":"));
 
   service.hostname = entrystr.str;
@@ -429,7 +430,9 @@ void mDNS::setServiceName(const std::string &name) { name_ = name; }
 
 void mDNS::setServiceTxtRecord(const std::string &txt_record) { txt_record_ = txt_record; }
 
-void mDNS::setTimeout(std::uint16_t timeout) { timeout_ = timeout; }
+void mDNS::setTimeout(std::uint16_t timeout) { timeout_ = timeout; timeout_ms_ = 0; }
+
+void mDNS::setTimeoutMs(std::uint32_t timeout_ms) { timeout_ms_ = timeout_ms; timeout_ = 0; }
 
 std::vector<ServiceDiscovery> mDNS::getDiscoveredServices() { return services; }
 
@@ -511,14 +514,19 @@ void mDNS::executeQuery(const std::string &service) {
     }
   }
 
-  // This is a simple implementation that loops for 5 seconds or as long as we
+  // This is a simple implementation that loops for x seconds or as long as we
   // get replies
   int res{};
   MDNS_LOG << "Reading mDNS query replies\n";
   do {
     struct timeval timeout;
-    timeout.tv_sec = timeout_;
-    timeout.tv_usec = 0;
+    if(timeout_ > 0){
+        timeout.tv_sec = timeout_;
+        timeout.tv_usec = 0;
+    } else {
+        timeout.tv_sec = 0;
+        timeout.tv_usec = timeout_ms_ * 1000; //ms to usec;
+    }
 
     int nfds = 0;
     fd_set readfs;
@@ -577,8 +585,13 @@ void mDNS::executeDiscovery() {
   MDNS_LOG << "Reading DNS-SD replies\n";
   do {
     struct timeval timeout;
-    timeout.tv_sec = timeout_;
-    timeout.tv_usec = 0;
+    if(timeout_ > 0){
+        timeout.tv_sec = timeout_;
+        timeout.tv_usec = 0;
+    } else {
+        timeout.tv_sec = 0;
+        timeout.tv_usec = timeout_ms_ * 1000; //ms to usec;
+    }
 
     int nfds = 0;
     fd_set readfs;

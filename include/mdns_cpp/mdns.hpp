@@ -24,6 +24,7 @@ class mDNS {
   void setServiceName(const std::string &name);
   void setServiceTxtRecord(const std::string &text_record);
   void setTimeout(std::uint16_t timeout);
+  void setTimeoutMs(std::uint32_t timeout_ms);
 
   void executeQuery(const std::string &service);
   void executeDiscovery();
@@ -38,6 +39,7 @@ class mDNS {
   std::string name_{"_http._tcp.local."};
   std::uint16_t port_{42424};
   std::uint16_t timeout_{5};
+  std::uint32_t timeout_ms_{0};
   std::string txt_record_{};
 
   bool running_{false};
