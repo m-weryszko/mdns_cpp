@@ -88,7 +88,21 @@ int main() {
 
 To send a DNS-SD service discovery request use `mdns_discovery_send`. This will send a single multicast packet (single PTR question record for `_services._dns-sd._udp.local.`) requesting a unicast response.
 
-To read discovery responses use `mdns_discovery_recv`. All records received since last call will be piped to the callback supplied in the function call. The entry type will be one of `MDNS_ENTRYTYPE_ANSWER`, `MDNS_ENTRYTYPE_AUTHORITY` and `MDNS_ENTRYTYPE_ADDITIONAL`.
+To read discovery responses use `mdns_discovery_recv` or `getDiscoveredServices()`. All records received since last call will be piped to the callback supplied in the function call. The entry type will be one of `MDNS_ENTRYTYPE_ANSWER`, `MDNS_ENTRYTYPE_AUTHORITY` and `MDNS_ENTRYTYPE_ADDITIONAL`.
+
+```c++
+#include <thread>
+#include "mdns_cpp/mdns.hpp"
+#include "mdns_cpp/defs.hpp"
+int main() {
+  mdns_cpp::mDNS mdns;
+  mdns.setTimeoutMs(4000);
+  mdns.executeDiscovery();
+  
+  std::vector<mdns_cpp::ServiceDiscovery> services = mdns.getDiscoveredServices();
+  return 0;
+}
+```
 
 ### Query
 
