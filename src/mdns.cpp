@@ -14,6 +14,7 @@
 #include <ifaddrs.h>
 #include <netdb.h>
 #include <netinet/in.h>
+#include <sys/types.h>
 #endif
 #include <string.h>
 
